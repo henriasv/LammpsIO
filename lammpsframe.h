@@ -2,7 +2,7 @@
 #define LAMMPSFRAME_H
 
 #include <vector>
-#include "vec3.h"
+#include "vec3/vec3.h"
 
 class LammpsFrame
 { 

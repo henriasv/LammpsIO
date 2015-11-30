@@ -243,7 +243,7 @@ void LammpsIO::resetFile()
     m_infile.seekg(std::ios_base::beg);
 }
 
-int elementCharToType(char element)
+int LammpsIO::elementCharToType(char element)
 {
    if (element == 'H')
    {

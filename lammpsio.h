@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 #include <fstream>
-#include "vec3.h"
+#include "vec3/vec3.h"
 #include "lammpsframe.h"
 
 class LammpsIO
@@ -33,6 +33,7 @@ public:
     void dumpVoro(LammpsFrame&, std::string filePath);
     void openDumpFile(std::string);
     void resetFile();
+    int elementCharToType(char);
 
 private:
     std::ifstream m_infile;
