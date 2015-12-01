@@ -14,6 +14,10 @@ LammpsIO::LammpsIO(std::string inputFile)
         std::cout << "could not open file " << inputFile << " for input" << std::endl;
         exit(1);
     }
+    LammpsFrame frame;
+    readFrame(frame, INFINITY);
+    m_infile.close();
+    m_infile.open(inputFile);
 }
 
 LammpsIO::~LammpsIO()
@@ -74,7 +78,7 @@ void LammpsIO::readNextFrame(LammpsFrame & frame)
     double pxx, pyy, pzz, pxy, pxz, pyz;
     while (counter < frame.numParticles)
     {
-         m_infile.getline(buf, buflen);
+        m_infile.getline(buf, buflen);
 
         token = std::strtok(buf, " ");
         id = atoi(token);
@@ -133,62 +137,94 @@ void LammpsIO::readFrame(LammpsFrame & frame, int wantFrame)
 {
     int buflen = 8196;
     char buf[buflen];
-
-    //m_infile.seekg(std::ios_base::beg);
-
+    bool hasReset = false;
     int timestep = -1;
+
     while (timestep < wantFrame)
     {
         std::ifstream::pos_type timestep_start = m_infile.tellg();
         m_infile.getline(buf, buflen);
+
         if (m_infile.eof())
         {
+            std::cout << "returning from end of file" << std::endl;
             return;
         }
+
         m_infile.getline(buf, buflen);
         timestep = atof(buf);
+        m_availableFrames[timestep] = true;
         std::cout << "Passing timestep: " << timestep << std::endl;
-        if (timestep >= wantFrame)
+        if (timestep == wantFrame)
         {
             m_infile.seekg(timestep_start);
             this->readNextFrame(frame);
+            hasReset = false;
             return;
         }
-
-        m_infile.getline(buf, buflen);
-        m_infile.getline(buf, buflen);
-        int num_particles = atoi(buf);
-
-        for (int j= 0; j<5; j++)
+        else if ((timestep > wantFrame) && (!hasReset))
         {
-            m_infile.getline(buf, buflen);
+            timestep = -1;
+            hasReset = true;
+            resetFile();
         }
 
-        std::ifstream::pos_type timestep_start2;
-        int particle_entry_length = 110;
-        m_infile.seekg(m_infile.tellg()+(particle_entry_length*num_particles));
-        const char* buf1 = "ITEM: T";
-        while (strncmp(buf, buf1, 7))
+        else
         {
-            timestep_start2 = m_infile.tellg();
             m_infile.getline(buf, buflen);
-        }
-        m_infile.seekg(timestep_start2);
-//        std::streampos s1 = m_infile.tellg();
-//        m_infile.getline(buf, buflen);
-//        std::streampos s2 = m_infile.tellg();
-//        std::cout << s2-s1 << std::endl;
-//        for (int j= 0; j<num_particles-1; j++)
-//        {
-//            m_infile.getline(buf, buflen);
-//        }
+            m_infile.getline(buf, buflen);
+            int num_particles = atoi(buf);
 
+            for (int j= 0; j<5; j++)
+            {
+                m_infile.getline(buf, buflen);
+            }
 
-        if (m_infile.eof())
-        {
-            break;
+            std::ifstream::pos_type timestep_start2;
+            int particle_entry_length = 110;
+            m_infile.seekg(m_infile.tellg()+(particle_entry_length*num_particles));
+            const char* buf1 = "ITEM: T";
+            while (strncmp(buf, buf1, 7)) // evaluates to false when string starts with ITEM: T
+            {
+                timestep_start2 = m_infile.tellg();
+                m_infile.getline(buf, buflen);
+                if (m_infile.eof())
+                {
+                    break;
+                }
+            }
+            if (m_infile.eof())
+            {
+                std::cout << "Breaking from end of file" << std::endl;
+                break;
+            }
+            else
+            {
+                m_infile.seekg(timestep_start2);
+            }
+    //        std::streampos s1 = m_infile.tellg();
+    //        m_infile.getline(buf, buflen);
+    //        std::streampos s2 = m_infile.tellg();
+    //        std::cout << s2-s1 << std::endl;
+    //        for (int j= 0; j<num_particles-1; j++)
+    //        {
+    //            m_infile.getline(buf, buflen);
+    //        }
         }
     }
+}
+
+bool LammpsIO::isAvailable(int frameNum)
+{
+    return m_availableFrames[frameNum];
+}
+
+std::vector<int> LammpsIO::availableFrames()
+{
+    std::vector<int> frames;
+    for (auto keyval : m_availableFrames)
+        frames.push_back(keyval.first);
+    return frames;
 }
 
 void LammpsIO::dumpFrame(LammpsFrame & frame)
