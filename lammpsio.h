@@ -7,6 +7,9 @@
 #include "vec3/vec3.h"
 #include "lammpsframe.h"
 #include <map>
+#include <iostream>
+#include <istream>
+#include <cstring>
 
 class LammpsIO
 {
@@ -29,18 +32,19 @@ public:
      *
      */
     void readFrame(LammpsFrame &, int);
+    void scanFileForTimestepPositions();
     bool isAvailable(int frameNum);
     std::vector<int> availableFrames();
     void dumpFrame(LammpsFrame&);
     void dumpVoro(LammpsFrame&, std::string filePath);
     void openDumpFile(std::string);
-    void resetFile();
     int elementCharToType(char);
 
 private:
     std::ifstream m_infile;
     std::ofstream m_outfile;
     std::map<int, bool> m_availableFrames;
+    std::map<int, std::ifstream::pos_type> m_framePositions;
 };
 
 #endif // LAMMPSREADER_H

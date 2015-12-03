@@ -1,8 +1,5 @@
 #include "lammpsio.h"
-#include <iostream>
-#include <istream>
-#include <cstring>
-#include <fstream>
+
 
 int elementCharToType(char);
 
@@ -15,7 +12,7 @@ LammpsIO::LammpsIO(std::string inputFile)
         exit(1);
     }
     LammpsFrame frame;
-    readFrame(frame, INFINITY);
+    scanFileForTimestepPositions();
     m_infile.close();
     m_infile.open(inputFile);
 }
@@ -135,82 +132,61 @@ void LammpsIO::readNextFrame(LammpsFrame & frame)
 
 void LammpsIO::readFrame(LammpsFrame & frame, int wantFrame)
 {
+    if (m_framePositions.count(wantFrame)>0)
+        m_infile.seekg(m_framePositions[wantFrame]);
+    else
+    {
+        std::cout << "Unable to read timestep " << wantFrame << std::endl;
+        return;
+    }
+    this->readNextFrame(frame);
+}
+
+void LammpsIO::scanFileForTimestepPositions()
+{
     int buflen = 8196;
     char buf[buflen];
-    bool hasReset = false;
     int timestep = -1;
 
-    while (timestep < wantFrame)
+    while (timestep < INFINITY)
     {
         std::ifstream::pos_type timestep_start = m_infile.tellg();
         m_infile.getline(buf, buflen);
 
         if (m_infile.eof())
-        {
-            std::cout << "returning from end of file" << std::endl;
             return;
-        }
 
         m_infile.getline(buf, buflen);
         timestep = atof(buf);
         m_availableFrames[timestep] = true;
+        m_framePositions[timestep] = timestep_start;
+
         std::cout << "Passing timestep: " << timestep << std::endl;
-        if (timestep == wantFrame)
-        {
-            m_infile.seekg(timestep_start);
-            this->readNextFrame(frame);
-            hasReset = false;
-            return;
-        }
-        else if ((timestep > wantFrame) && (!hasReset))
-        {
-            timestep = -1;
-            hasReset = true;
-            resetFile();
-        }
 
-        else
+
+        m_infile.getline(buf, buflen);
+        m_infile.getline(buf, buflen);
+        int num_particles = atoi(buf);
+
+        for (int j= 0; j<5; j++)
         {
             m_infile.getline(buf, buflen);
+        }
+
+        std::ifstream::pos_type timestep_start2;
+        int particle_entry_length = 115;
+        m_infile.seekg(m_infile.tellg()+(particle_entry_length*num_particles));
+        const char* buf1 = "ITEM: TI";
+        while (strncmp(buf, buf1, 8)) // evaluates to false when string starts with ITEM: T
+        {
+            timestep_start2 = m_infile.tellg();
             m_infile.getline(buf, buflen);
-            int num_particles = atoi(buf);
-
-            for (int j= 0; j<5; j++)
-            {
-                m_infile.getline(buf, buflen);
-            }
-
-            std::ifstream::pos_type timestep_start2;
-            int particle_entry_length = 110;
-            m_infile.seekg(m_infile.tellg()+(particle_entry_length*num_particles));
-            const char* buf1 = "ITEM: T";
-            while (strncmp(buf, buf1, 7)) // evaluates to false when string starts with ITEM: T
-            {
-                timestep_start2 = m_infile.tellg();
-                m_infile.getline(buf, buflen);
-                if (m_infile.eof())
-                {
-                    break;
-                }
-            }
             if (m_infile.eof())
             {
-                std::cout << "Breaking from end of file" << std::endl;
-                break;
+                return;
             }
-            else
-            {
-                m_infile.seekg(timestep_start2);
-            }
-    //        std::streampos s1 = m_infile.tellg();
-    //        m_infile.getline(buf, buflen);
-    //        std::streampos s2 = m_infile.tellg();
-    //        std::cout << s2-s1 << std::endl;
-    //        for (int j= 0; j<num_particles-1; j++)
-    //        {
-    //            m_infile.getline(buf, buflen);
-    //        }
         }
+        m_infile.seekg(timestep_start2);
     }
 }
 
@@ -272,11 +248,6 @@ void LammpsIO::openDumpFile(std::string dumpFile)
     {
         std::cout << "Failed to open output file " << dumpFile << std::endl;
     }
-}
-
-void LammpsIO::resetFile()
-{
-    m_infile.seekg(std::ios_base::beg);
 }
 
 int LammpsIO::elementCharToType(char element)
