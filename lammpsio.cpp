@@ -174,7 +174,7 @@ void LammpsIO::scanFileForTimestepPositions()
         }
 
         std::ifstream::pos_type timestep_start2;
-        int particle_entry_length = 115;
+        int particle_entry_length = 114;
         m_infile.seekg(m_infile.tellg()+(particle_entry_length*num_particles));
         const char* buf1 = "ITEM: TI";
         while (strncmp(buf, buf1, 8)) // evaluates to false when string starts with ITEM: T
