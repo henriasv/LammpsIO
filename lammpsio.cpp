@@ -130,14 +130,14 @@ void LammpsIO::readNextFrame(LammpsFrame & frame)
     //printLammpsFrame(frame);
 }
 
-void LammpsIO::readFrame(LammpsFrame & frame, int wantFrame)
+bool LammpsIO::readFrame(LammpsFrame & frame, int wantFrame)
 {
     if (m_framePositions.count(wantFrame)>0)
         m_infile.seekg(m_framePositions[wantFrame]);
     else
     {
         std::cout << "Unable to read timestep " << wantFrame << std::endl;
-        return;
+        return false;
     }
     this->readNextFrame(frame);
 }

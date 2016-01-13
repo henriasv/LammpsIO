@@ -31,7 +31,7 @@ public:
      * A special feature in the implementation of the position search is the particle_entry_length*num_particles skip in the file. This is used to avoid actually reading all lines. The value of particle_entry_length can be tuned to speed up searcing, but if the value is too high, the result is skipping over whole timesteps without cheching what timesteps they are.
      *
      */
-    void readFrame(LammpsFrame &, int);
+    bool readFrame(LammpsFrame &, int);
     void scanFileForTimestepPositions();
     bool isAvailable(int frameNum);
     std::vector<int> availableFrames();
